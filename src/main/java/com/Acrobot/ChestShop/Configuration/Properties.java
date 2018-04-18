@@ -11,7 +11,7 @@ public class Properties {
     public static boolean TURN_OFF_UPDATES = false;
 
     @PrecededBySpace
-    @ConfigurationComment("How large should the internal uuid and name caches be?")
+    @ConfigurationComment("How large should the internal caches be?")
     public static int CACHE_SIZE = 1000;
 
     @PrecededBySpace
@@ -70,7 +70,7 @@ public class Properties {
     @ConfigurationComment("Do you want to allow other players to build a shop on a block where there's one already?")
     public static boolean ALLOW_MULTIPLE_SHOPS_AT_ONE_BLOCK = false;
 
-    @ConfigurationComment("Can shops be used even when the seller doesn't have enough items? (The price will be scaled adequately to the item amount)")
+    @ConfigurationComment("Can shops be used even when the buyer/seller doesn't have enough items, space or money? (The price will be scaled adequately to the item amount)")
     public static boolean ALLOW_PARTIAL_TRANSACTIONS = true;
 
     @ConfigurationComment("Can '?' be put in place of item name in order for the sign to be auto-filled?")
@@ -133,8 +133,8 @@ public class Properties {
     @ConfigurationComment("Do you want to only let people build inside regions?")
     public static boolean WORLDGUARD_INTEGRATION = false;
 
-    @ConfigurationComment("Do you want to only let poeple build inside region flagged by doing /region regionName flag chestshop allow?")
-    public static boolean WORLDGUARD_USE_FLAG = true;
+    @ConfigurationComment("Do you want to only let people build inside region flagged by doing /region regionName flag allow-shop allow?")
+    public static boolean WORLDGUARD_USE_FLAG = false;
 
     @ConfigurationComment("Do you want ChestShop to respect WorldGuard's chest protection?")
     public static boolean WORLDGUARD_USE_PROTECTION = false;
@@ -149,4 +149,8 @@ public class Properties {
     @PrecededBySpace
     @ConfigurationComment("How much Heroes exp should people get for creating a ChestShop?")
     public static double HEROES_EXP = 100;
+    
+    @PrecededBySpace
+    @ConfigurationComment("Add icons and make item names hoverable in transaction messages when ShowItem is installed?")
+    public static boolean SHOWITEM_MESSAGE = true;
 }

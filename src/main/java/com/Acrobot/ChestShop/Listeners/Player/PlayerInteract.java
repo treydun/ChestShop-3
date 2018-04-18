@@ -15,9 +15,9 @@ import com.Acrobot.ChestShop.Signs.ChestShopSign;
 import com.Acrobot.ChestShop.UUIDs.NameManager;
 import com.Acrobot.ChestShop.Utils.uBlock;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
@@ -26,11 +26,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-
-import java.util.UUID;
 
 import static com.Acrobot.Breeze.Utils.BlockUtil.isChest;
 import static com.Acrobot.Breeze.Utils.BlockUtil.isSign;
@@ -77,7 +76,34 @@ public class PlayerInteract implements Listener {
             return;
         }
 
-        if (ChestShopSign.canAccess(player, sign)) {
+        boolean canAccess = ChestShopSign.canAccess(player, sign);
+    
+        if (Properties.ALLOW_AUTO_ITEM_FILL && ChatColor.stripColor(sign.getLine(ITEM_LINE)).equals(AUTOFILL_CODE)) {
+            if (canAccess) {
+                ItemStack item = player.getInventory().getItemInMainHand();
+                if (!MaterialUtil.isEmpty(item)) {
+                    String itemCode = MaterialUtil.getSignName(item);
+                    String[] lines = sign.getLines();
+                    lines[ITEM_LINE] = itemCode;
+    
+                    SignChangeEvent changeEvent = new SignChangeEvent(block, player, lines);
+                    com.Acrobot.ChestShop.ChestShop.callEvent(changeEvent);
+                    if (!changeEvent.isCancelled()) {
+                        for (byte i = 0; i < changeEvent.getLines().length; ++i) {
+                            sign.setLine(i, changeEvent.getLine(i));
+                        }
+                        sign.update();
+                    }
+                } else {
+                    player.sendMessage(Messages.prefix(Messages.NO_ITEM_IN_HAND));
+                }
+            } else {
+                player.sendMessage(Messages.prefix(Messages.ACCESS_DENIED));
+            }
+            return;
+        }
+        
+        if (canAccess) {
             if (!Properties.ALLOW_SIGN_CHEST_OPEN || player.isSneaking() || player.isInsideVehicle() || player.getGameMode() == GameMode.CREATIVE) {
                 return;
             }
@@ -113,23 +139,25 @@ public class PlayerInteract implements Listener {
         String prices = sign.getLine(PRICE_LINE);
         String material = sign.getLine(ITEM_LINE);
 
-        Account account = NameManager.getAccountFromShortName(name);
-        if (account == null)
+        Account account = NameManager.getLastAccountFromShortName(name);
+        if (account == null) {
+            player.sendMessage(Messages.prefix(Messages.PLAYER_NOT_FOUND));
             return null;
+        }
 
-        OfflinePlayer owner = account.getUuid().version() != 4 // it seems to forget the username when getting by the offline UUID
-                ? Bukkit.getOfflinePlayer(account.getName())   // so we get the OfflinePlayer directly by the name in this case
-                : Bukkit.getOfflinePlayer(account.getUuid());
+        boolean adminShop = ChestShopSign.isAdminShop(sign);
 
         // check if player exists in economy
-        if(!ChestShopSign.isAdminShop(sign) && (owner == null || owner.getName() == null || !VaultListener.getProvider().hasAccount(owner)))
+        if(!adminShop && !VaultListener.getProvider().hasAccount(account.getName())) {
+            player.sendMessage(Messages.prefix(Messages.NO_ECONOMY_ACCOUNT));
             return null;
+        }
 
         Action buy = Properties.REVERSE_BUTTONS ? LEFT_CLICK_BLOCK : RIGHT_CLICK_BLOCK;
         double price = (action == buy ? PriceUtil.getBuyPrice(prices) : PriceUtil.getSellPrice(prices));
 
         Chest chest = uBlock.findConnectedChest(sign);
-        Inventory ownerInventory = (ChestShopSign.isAdminShop(sign) ? new AdminInventory() : chest != null ? chest.getInventory() : null);
+        Inventory ownerInventory = (adminShop ? new AdminInventory() : chest != null ? chest.getInventory() : null);
 
         ItemStack item = MaterialUtil.getItem(material);
         if (item == null || !NumberUtil.isInteger(quantity)) {
@@ -153,10 +181,10 @@ public class PlayerInteract implements Listener {
 
         item.setAmount(amount);
 
-        ItemStack[] items = {item};
+        ItemStack[] items = InventoryUtil.getItemsStacked(item);
 
         TransactionType transactionType = (action == buy ? BUY : SELL);
-        return new PreTransactionEvent(ownerInventory, player.getInventory(), items, price, player, owner, sign, transactionType);
+        return new PreTransactionEvent(ownerInventory, player.getInventory(), items, price, player, account, sign, transactionType);
     }
 
     private static boolean isAllowedForShift(boolean buyTransaction) {
@@ -173,8 +201,8 @@ public class PlayerInteract implements Listener {
         Action buy = Properties.REVERSE_BUTTONS ? LEFT_CLICK_BLOCK : RIGHT_CLICK_BLOCK;
         Inventory checkedInventory = (action == buy ? inventory : player.getInventory());
 
-        if (checkedInventory.containsAtLeast(item, item.getMaxStackSize())) {
-            return item.getMaxStackSize();
+        if (checkedInventory.containsAtLeast(item, InventoryUtil.getMaxStackSize(item))) {
+            return InventoryUtil.getMaxStackSize(item);
         } else {
             return InventoryUtil.getAmount(item, checkedInventory);
         }

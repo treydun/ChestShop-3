@@ -1,11 +1,9 @@
 package com.Acrobot.Breeze.Utils;
 
-import com.google.common.base.Joiner;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.ChatColor;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 
 /**
  * @author Acrobot
@@ -43,7 +41,7 @@ public class StringUtil {
      * @return Joined array
      */
     public static String joinArray(String[] array) {
-        return Joiner.on(' ').join(array);
+        return String.join(" ", array);
     }
 
     /**
@@ -52,8 +50,8 @@ public class StringUtil {
      * @param array Iterable
      * @return Joined iterable
      */
-    public static String joinArray(Iterable<?> array) {
-        return Joiner.on(' ').join(array);
+    public static String joinArray(Collection<String> array) {
+        return String.join(" ", array);
     }
 
     /**
@@ -71,12 +69,12 @@ public class StringUtil {
      * @return Stripped strings
      */
     public static String[] stripColourCodes(String[] strings) {
-        List<String> output = new ArrayList<String>();
+        String[] output = new String[strings.length];
 
-        for (String string : strings) {
-            output.add(stripColourCodes(string));
+        for (int i = 0; i < strings.length; i++) {
+            output[i] = stripColourCodes(strings[i]);
         }
 
-        return output.toArray(new String[output.size()]);
+        return output;
     }
 }

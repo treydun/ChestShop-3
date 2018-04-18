@@ -1,6 +1,7 @@
 package com.Acrobot.ChestShop.Listeners.PreTransaction;
 
 import com.Acrobot.Breeze.Utils.InventoryUtil;
+import com.Acrobot.ChestShop.Database.Item;
 import com.Acrobot.ChestShop.Events.PreTransactionEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -25,7 +26,7 @@ public class StockFittingChecker implements Listener {
         Inventory shopInventory = event.getOwnerInventory();
         ItemStack[] stock = event.getStock();
 
-        if (!itemsFitInInventory(stock, shopInventory)) {
+        if (!InventoryUtil.fits(stock, shopInventory)) {
             event.setCancelled(NOT_ENOUGH_SPACE_IN_CHEST);
         }
     }
@@ -39,18 +40,8 @@ public class StockFittingChecker implements Listener {
         Inventory clientInventory = event.getClientInventory();
         ItemStack[] stock = event.getStock();
 
-        if (!itemsFitInInventory(stock, clientInventory)) {
+        if (!InventoryUtil.fits(stock, clientInventory)) {
             event.setCancelled(NOT_ENOUGH_SPACE_IN_INVENTORY);
         }
-    }
-
-    private static boolean itemsFitInInventory(ItemStack[] items, Inventory inventory) {
-        for (ItemStack item : items) {
-            if (!InventoryUtil.fits(item, inventory)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

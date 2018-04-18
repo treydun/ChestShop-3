@@ -1,7 +1,7 @@
 package com.Acrobot.ChestShop.Configuration;
 
 import com.Acrobot.Breeze.Configuration.Annotations.PrecededBySpace;
-import org.bukkit.ChatColor;
+import com.Acrobot.Breeze.Configuration.Configuration;
 
 /**
  * @author Acrobot
@@ -20,6 +20,7 @@ public class Messages {
     @PrecededBySpace
     public static String CLIENT_DEPOSIT_FAILED = "Money deposit to your account failed!";
     public static String SHOP_DEPOSIT_FAILED = "Money deposit to shop owner failed!";
+    public static String NO_ECONOMY_ACCOUNT = "Economy account from shop owner doesn't exist!";
 
     @PrecededBySpace
     public static String NO_BUYING_HERE = "You can't buy here!";
@@ -48,7 +49,11 @@ public class Messages {
     public static String NO_CHEST_DETECTED = "Couldn't find a chest!";
     public static String INVALID_SHOP_DETECTED = "The shop cannot be used!";
     public static String CANNOT_ACCESS_THE_CHEST = "You don't have permissions to access this chest!";
-
+    
+    @PrecededBySpace
+    public static String CLICK_TO_AUTOFILL_ITEM = "Click the sign with the item that this shop is for!";
+    public static String NO_ITEM_IN_HAND = "You don't have an item in your hand to autofill!";
+    
     @PrecededBySpace
     public static String PROTECTED_SHOP = "Successfully protected the shop with LWC!";
     public static String SHOP_CREATED = "Shop successfully created!";
@@ -73,6 +78,6 @@ public class Messages {
     public static String TOGGLE_MESSAGES_ON = "You will now receive messages from your shop(s).";
 
     public static String prefix(String message) {
-        return prefix + message;
+        return Configuration.getColoured( prefix + message);
     }
 }

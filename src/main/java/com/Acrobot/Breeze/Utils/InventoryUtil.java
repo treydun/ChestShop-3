@@ -6,9 +6,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import com.Acrobot.ChestShop.Configuration.Properties;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BookMeta;
 
 /**
  * @author Acrobot
@@ -74,6 +74,23 @@ public class InventoryUtil {
 
         return true;
     }
+    
+    /**
+     * Count amount of empty slots in an inventory
+     *
+     * @param inventory the inventory
+     * @return The amount of empty slots
+     */
+    public static int countEmpty(Inventory inventory) {
+        int emptyAmount = 0;
+        for (ItemStack stack : getStorageContents(inventory)) {
+            if (MaterialUtil.isEmpty(stack)) {
+                emptyAmount++;
+            }
+        }
+        
+        return emptyAmount;
+    }
 
     /**
      * Checks if the inventory has stock of this type
@@ -83,12 +100,31 @@ public class InventoryUtil {
      * @return Does the inventory contain stock of this type?
      */
     public static boolean hasItems(ItemStack[] items, Inventory inventory) {
-        for (ItemStack item : items) {
+        ItemStack[] mergedItems = mergeSimilarStacks(items);
+        for (ItemStack item : mergedItems) {
             if (getAmount(item, inventory) < item.getAmount()) {
                 return false;
             }
         }
 
+        return true;
+    }
+    
+    /**
+     * Checks if items fit in the inventory
+     *
+     * @param items     Items to check
+     * @param inventory inventory
+     * @return Do the items fit inside the inventory?
+     */
+    public static boolean fits(ItemStack[] items, Inventory inventory) {
+        ItemStack[] mergedItems = InventoryUtil.mergeSimilarStacks(items);
+        for (ItemStack item : mergedItems) {
+            if (!InventoryUtil.fits(item, inventory)) {
+                return false;
+            }
+        }
+        
         return true;
     }
 
@@ -112,7 +148,7 @@ public class InventoryUtil {
             }
 
             if (MaterialUtil.isEmpty(iStack)) {
-                left -= item.getMaxStackSize();
+                left -= getMaxStackSize(item);
                 continue;
             }
 
@@ -120,7 +156,7 @@ public class InventoryUtil {
                 continue;
             }
 
-            left -= (iStack.getMaxStackSize() - iStack.getAmount());
+            left -= (getMaxStackSize(iStack) - iStack.getAmount());
         }
 
         return left <= 0;
@@ -153,7 +189,9 @@ public class InventoryUtil {
             ItemStack currentItem = inventory.getItem(currentSlot);
 
             if (MaterialUtil.isEmpty(currentItem)) {
+                currentItem = new ItemStack(item);
                 currentItem.setAmount(Math.min(amountLeft, maxStackSize));
+                inventory.setItem(currentSlot, currentItem);
 
                 amountLeft -= currentItem.getAmount();
             } else if (currentItem.getAmount() < maxStackSize && MaterialUtil.equals(currentItem, item)) {
@@ -209,12 +247,7 @@ public class InventoryUtil {
         Map<Integer, ItemStack> leftovers = inventory.removeItem(item);
 
         if (!leftovers.isEmpty()) {
-            for (Iterator<ItemStack> iterator = leftovers.values().iterator(); iterator.hasNext(); ) {
-                ItemStack left = iterator.next();
-                if (removeManually(left, inventory) == 0) {
-                    iterator.remove();
-                }
-            }
+            leftovers.values().removeIf(left -> removeManually(left, inventory) == 0);
         }
 
         return countItems(leftovers);
@@ -230,6 +263,7 @@ public class InventoryUtil {
                 int neededToRemove = Math.min(currentItem.getAmount(), amountLeft);
 
                 currentItem.setAmount(currentItem.getAmount() - neededToRemove);
+                inventory.setItem(currentSlot, currentItem);
 
                 amountLeft -= neededToRemove;
             }
@@ -259,7 +293,7 @@ public class InventoryUtil {
                 }
             }
 
-            itemList.add(item);
+            itemList.add(item.clone());
         }
 
         return itemList.toArray(new ItemStack[itemList.size()]);
@@ -295,5 +329,44 @@ public class InventoryUtil {
         }
 
         return totalLeft;
+    }
+
+    /**
+     * Get the max size an item stack is allowed to stack to while respecting the STACK_TO_64 config property
+     * @param item The item to get the max stacksize of
+     * @return The max stacksize of the item stack's type or 64 if STACK_TO_64 is enabled
+     */
+    public static int getMaxStackSize(ItemStack item) {
+        return Properties.STACK_TO_64 ? 64 : item.getMaxStackSize();
+    }
+    
+    /**
+     * Get an array of different item stacks that are properly stacked to their max stack size
+     * @param items The items to stack
+     * @return An array of item stacks which's amount is a maximum of the allowed stack size
+     */
+    public static ItemStack[] getItemsStacked(ItemStack... items) {
+        List<ItemStack> stackedItems = new LinkedList<>();
+        for (ItemStack item : items) {
+            int maxStackSize = getMaxStackSize(item);
+            if (maxStackSize == 0) {
+                continue;
+            }
+            if (item.getAmount() <= maxStackSize) {
+                stackedItems.add(item.clone());
+                continue;
+            }
+            for (int i = 0; i < Math.floor(item.getAmount() / maxStackSize); i++) {
+                ItemStack itemClone = item.clone();
+                itemClone.setAmount(maxStackSize);
+                stackedItems.add(itemClone);
+            }
+            if (item.getAmount() % maxStackSize != 0) {
+                ItemStack rest = item.clone();
+                rest.setAmount(item.getAmount() % maxStackSize);
+                stackedItems.add(rest);
+            }
+        }
+        return stackedItems.toArray(new ItemStack[stackedItems.size()]);
     }
 }

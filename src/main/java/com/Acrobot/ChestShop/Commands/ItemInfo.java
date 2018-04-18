@@ -35,11 +35,18 @@ public class ItemInfo implements CommandExecutor {
             return false;
         }
 
-        String durability = getDurability(item);
-        String metadata = getMetadata(item);
-
         sender.sendMessage(Messages.prefix(iteminfo));
-        sender.sendMessage(getNameAndID(item) + durability + metadata + ChatColor.WHITE);
+        try {
+            sender.sendMessage(ChatColor.WHITE + "Full Name: " + ChatColor.GRAY + MaterialUtil.getName(item));
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage(ChatColor.RED + "Full Name Error: " + e.getMessage());
+        }
+    
+        try {
+            sender.sendMessage(ChatColor.WHITE + "Shop Sign: " + ChatColor.GRAY + MaterialUtil.getSignName(item));
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage(ChatColor.RED + "Shop Sign Error: " + e.getMessage());
+        }
 
         ItemInfoEvent event = new ItemInfoEvent(sender, item);
         ChestShop.callEvent(event);
@@ -48,9 +55,7 @@ public class ItemInfo implements CommandExecutor {
     }
 
     private static String getNameAndID(ItemStack item) {
-        String itemName = MaterialUtil.getName(item);
-
-        return ChatColor.GRAY + itemName + ChatColor.WHITE + "      " + item.getTypeId();
+        return MaterialUtil.getName(item);
     }
 
     private static String getDurability(ItemStack item) {

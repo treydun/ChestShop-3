@@ -2,14 +2,13 @@ package com.Acrobot.ChestShop.UUIDs;
 
 import com.Acrobot.Breeze.Utils.Encoding.Base62;
 import com.Acrobot.Breeze.Utils.NameUtil;
+import com.Acrobot.Breeze.Collection.SimpleCache;
 import com.Acrobot.ChestShop.ChestShop;
 import com.Acrobot.ChestShop.Configuration.Properties;
 import com.Acrobot.ChestShop.Database.Account;
 import com.Acrobot.ChestShop.Database.DaoCreator;
 import com.Acrobot.ChestShop.Permission;
 import com.Acrobot.ChestShop.Signs.ChestShopSign;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.j256.ormlite.dao.Dao;
 
 import org.apache.commons.lang.Validate;
@@ -32,9 +31,12 @@ import java.util.logging.Level;
 public class NameManager {
     private static Dao<Account, String> accounts;
 
-    private static Cache<String, Account> usernameToAccount = CacheBuilder.newBuilder().maximumSize(Properties.CACHE_SIZE).build();
-    private static Cache<UUID, Account> uuidToAccount = CacheBuilder.newBuilder().maximumSize(Properties.CACHE_SIZE).build();
-    private static Cache<String, Account> shortToAccount = CacheBuilder.newBuilder().maximumSize(Properties.CACHE_SIZE).build();
+    private static SimpleCache<String, Account> usernameToAccount = new SimpleCache<>(Properties.CACHE_SIZE);
+    private static SimpleCache<UUID, Account> uuidToAccount = new SimpleCache<>(Properties.CACHE_SIZE);
+    private static SimpleCache<String, Account> shortToAccount = new SimpleCache<>(Properties.CACHE_SIZE);
+
+    private static Account adminAccount;
+    private static Account serverEconomyAccount;
 
     /**
      * Get account info from a UUID
@@ -118,6 +120,20 @@ public class NameManager {
             return null;
         }
     }
+    
+    /**
+     * Get the information from the last time a player logged in that previously used the shortened name
+     * @param shortName The name of the player to get the last account for
+     * @return          The last account or <tt>null</tt> if none was found
+     * @throws IllegalArgumentException if the username is not a shortened name and longer than 15 chars
+     */
+    public static Account getLastAccountFromShortName(String shortName) {
+        Account account = getAccountFromShortName(shortName); // first get the account associated with the short name
+        if (account != null) {
+            return getAccount(account.getUuid()); // then get the last account that was online with that UUID
+        }
+        return null;
+    }
 
     /**
      * Get the UUID from a player's (non-shortened) username
@@ -175,12 +191,9 @@ public class NameManager {
      */
     @Deprecated
     public static String getFullUsername(String shortName) {
-        Account account = getAccountFromShortName(shortName); // first get the account associated with the short name
+        Account account = getLastAccountFromShortName(shortName);
         if (account != null) {
-            account = getAccount(account.getUuid()); // then get the last account that was online with that UUID
-            if (account != null) {
-                return account.getName();
-            }
+            return account.getName();
         }
         return null;
     }
@@ -259,23 +272,29 @@ public class NameManager {
         }
 
         Account account = getAccountFromShortName(name);
-        return account != null && account.getUuid().equals(player.getUniqueId());
+        return account != null && (account.getUuid().equals(player.getUniqueId())
+                || (!account.getName().equalsIgnoreCase(name) && Permission.otherName(player, account.getName())));
     }
 
     public static boolean isAdminShop(UUID uuid) {
-        return Properties.ADMIN_SHOP_NAME.equals(getUsername(uuid));
+        return adminAccount != null && uuid.equals(adminAccount.getUuid());
+    }
+
+    public static boolean isServerEconomyAccount(UUID uuid) {
+        return serverEconomyAccount != null && uuid.equals(serverEconomyAccount.getUuid());
     }
 
     public static void load() {
         try {
             accounts = DaoCreator.getDaoAndCreateTable(Account.class);
 
-            Account adminAccount = new Account(Properties.ADMIN_SHOP_NAME, Bukkit.getOfflinePlayer(Properties.ADMIN_SHOP_NAME).getUniqueId());
+            adminAccount = new Account(Properties.ADMIN_SHOP_NAME, Bukkit.getOfflinePlayer(Properties.ADMIN_SHOP_NAME).getUniqueId());
             accounts.createOrUpdate(adminAccount);
 
             if (!Properties.SERVER_ECONOMY_ACCOUNT.isEmpty()) {
-                Account serverEconomyAccount = getAccount(Properties.SERVER_ECONOMY_ACCOUNT);
+                serverEconomyAccount = getAccount(Properties.SERVER_ECONOMY_ACCOUNT);
                 if (serverEconomyAccount == null || serverEconomyAccount.getUuid() == null) {
+                    serverEconomyAccount = null;
                     ChestShop.getBukkitLogger().log(Level.WARNING, "Server economy account setting '" + Properties.SERVER_ECONOMY_ACCOUNT + "' doesn't seem to be the name of a known player! Please log in at least once in order for the server economy account to work.");
                 }
             }
@@ -283,4 +302,9 @@ public class NameManager {
             e.printStackTrace();
         }
     }
+    
+    public static Account getServerEconomyAccount() {
+        return serverEconomyAccount;
+    }
+    
 }

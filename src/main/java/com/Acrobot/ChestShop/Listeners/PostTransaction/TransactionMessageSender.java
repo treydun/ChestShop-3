@@ -2,13 +2,13 @@ package com.Acrobot.ChestShop.Listeners.PostTransaction;
 
 import com.Acrobot.Breeze.Utils.InventoryUtil;
 import com.Acrobot.Breeze.Utils.MaterialUtil;
+import com.Acrobot.Breeze.Utils.StringUtil;
 import com.Acrobot.ChestShop.Commands.Toggle;
 import com.Acrobot.ChestShop.Configuration.Messages;
 import com.Acrobot.ChestShop.Configuration.Properties;
 import com.Acrobot.ChestShop.Economy.Economy;
 import com.Acrobot.ChestShop.Events.TransactionEvent;
 import com.Acrobot.ChestShop.UUIDs.NameManager;
-import com.google.common.base.Joiner;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,6 +16,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,75 +34,62 @@ public class TransactionMessageSender implements Listener {
     }
 
     protected static void sendBuyMessage(TransactionEvent event) {
-        String itemName = parseItemInformation(event.getStock());
+        String ownerName = event.getOwnerAccount().getName();
 
         Player player = event.getClient();
 
-        String price = Economy.formatBalance(event.getPrice());
-
         if (Properties.SHOW_TRANSACTION_INFORMATION_CLIENT) {
-            String message = formatMessage(Messages.YOU_BOUGHT_FROM_SHOP, itemName, price);
-            message = message.replace("%owner", event.getOwner().getName());
-
-            player.sendMessage(message);
+            sendMessage(player, Messages.YOU_BOUGHT_FROM_SHOP, event, "owner", ownerName);
         }
 
-        if (Properties.SHOW_TRANSACTION_INFORMATION_OWNER && !Toggle.isIgnoring(event.getOwner())) {
-            String message = formatMessage(Messages.SOMEBODY_BOUGHT_FROM_YOUR_SHOP, itemName, price);
-            message = message.replace("%buyer", player.getName());
-
-            sendMessageToOwner(message, event);
+        if (Properties.SHOW_TRANSACTION_INFORMATION_OWNER && !Toggle.isIgnoring(event.getOwnerAccount().getName())) {
+            Player owner = Bukkit.getPlayer(event.getOwnerAccount().getUuid());
+            if (owner != null) {
+                sendMessage(owner, Messages.SOMEBODY_BOUGHT_FROM_YOUR_SHOP, event, "buyer", player.getName());
+            }
         }
     }
-
+    
     protected static void sendSellMessage(TransactionEvent event) {
-        String itemName = parseItemInformation(event.getStock());
+        String ownerName = event.getOwnerAccount().getName();
 
         Player player = event.getClient();
 
-        String price = Economy.formatBalance(event.getPrice());
-
         if (Properties.SHOW_TRANSACTION_INFORMATION_CLIENT) {
-            String message = formatMessage(Messages.YOU_SOLD_TO_SHOP, itemName, price);
-            message = message.replace("%buyer", event.getOwner().getName());
-
-            player.sendMessage(message);
+            sendMessage(player, Messages.YOU_SOLD_TO_SHOP, event, "buyer", ownerName);
         }
 
-        if (Properties.SHOW_TRANSACTION_INFORMATION_OWNER && !Toggle.isIgnoring(event.getOwner())) {
-            String message = formatMessage(Messages.SOMEBODY_SOLD_TO_YOUR_SHOP, itemName, price);
-            message = message.replace("%seller", player.getName());
-
-            sendMessageToOwner(message, event);
+        if (Properties.SHOW_TRANSACTION_INFORMATION_OWNER && !Toggle.isIgnoring(ownerName)) {
+            Player owner = Bukkit.getPlayer(event.getOwnerAccount().getUuid());
+            if (owner != null) {
+                sendMessage(owner, Messages.SOMEBODY_SOLD_TO_YOUR_SHOP, event, "seller", player.getName());
+            }
         }
+    }
+    
+    private static void sendMessage(Player player, String rawMessage, TransactionEvent event, String... replacements) {
+        String message = Messages.prefix(rawMessage)
+                .replace("%price", Economy.formatBalance(event.getPrice()));
+        
+        for (int i = 0; i + 1 < replacements.length; i+=2) {
+            message = message.replace("%" + replacements[i], replacements[i + 1]);
+        }
+        
+        if (Properties.SHOWITEM_MESSAGE && MaterialUtil.Show.sendMessage(player, message, event.getStock())) {
+            return;
+        }
+        player.sendMessage(message.replace("%item", parseItemInformation(event.getStock())));
     }
 
     private static String parseItemInformation(ItemStack[] items) {
         ItemStack[] stock = InventoryUtil.mergeSimilarStacks(items);
 
-        StringBuilder message = new StringBuilder(15);
-        Joiner joiner = Joiner.on(' ');
+        List<String> itemText = new ArrayList<>();
 
         for (ItemStack item : stock) {
-            joiner.appendTo(message, item.getAmount(), MaterialUtil.getName(item));
+            itemText.add(item.getAmount() + " " + MaterialUtil.getName(item));
         }
 
-        return message.toString();
-    }
-
-    private static void sendMessageToOwner(String message, TransactionEvent event) {
-        UUID owner = event.getOwner().getUniqueId();
-
-        Player player = Bukkit.getPlayer(owner);
-
-        if (player != null) {
-            player.sendMessage(message);
-        }
-    }
-
-    private static String formatMessage(String message, String item, String price) {
-        return Messages.prefix(message)
-                .replace("%item", item)
-                .replace("%price", price);
+        return StringUtil.joinArray(itemText);
     }
 }

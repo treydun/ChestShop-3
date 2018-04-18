@@ -6,8 +6,9 @@
 
     <groupId>com.acrobot.chestshop</groupId>
     <artifactId>chestshop</artifactId>
-    <version>3.8.13-SNAPSHOT</version>
+    <version>3.9.2-SNAPSHOT</version>
     <description>Chest-and-sign shop plugin for Bukkit</description>
+    <name>ChestShop</name>
 
     <scm>
         <connection>scm:git:git://github.com/ChestShop-authors/ChestShop-3</connection>
@@ -39,6 +40,10 @@
         <repository>
             <id>authme-repo</id>
             <url>http://ci.xephi.fr/plugin/repository/everything/</url>
+        </repository>
+        <repository>
+            <id>minebench-repo</id>
+            <url>https://repo.minebench.de/</url>
         </repository>
         <repository>
             <id>local_repo</id>
@@ -260,21 +265,21 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>de.themoep.showitem</groupId>
+            <artifactId>api</artifactId>
+            <version>1.2.24</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <finalName>${project.name}</finalName>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <finalName>ChestShop</finalName>
-                </configuration>
-            </plugin>
-            <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
+                <version>3.6.1</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -283,7 +288,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>2.3</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -360,7 +365,7 @@
             </activation>
             <properties>
                 <buildNumber>${env.BUILD_NUMBER}</buildNumber>
-                <buildDescription>(build #${env.BUILD_NUMBER})</buildDescription>
+                <buildDescription>(build ${env.BUILD_NUMBER})</buildDescription>
             </properties>
         </profile>
     </profiles>
